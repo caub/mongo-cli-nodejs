@@ -1,5 +1,5 @@
 // reference the http module so we can create a webserver
-// Note: when spawning a server on Cloud9 IDE,
+// Note: when spawning a server on Cloud9 IDE, 
 // listen on the process.env.PORT and process.env.IP environment variables
 
 // Click the 'Run' button at the top to start your server,
@@ -8,15 +8,20 @@
 
 var mongoClient = require('mongodb').MongoClient;
 var ObjectID = require('mongodb').ObjectID;
-
 var http = require('http');
+var express = require('express');
+var app = express();
 var WebSocketServer = require('ws').Server;
 
 var openid = require('openid');
 var url = require('url');
 var querystring = require('querystring');
 
-var extensions = [new openid.UserInterface(),
+
+var server = http.createServer(app);
+server.listen(process.env.PORT, process.env.IP);
+
+var extensions = [new openid.UserInterface(), 
                   new openid.SimpleRegistration(
                       {
                         "email" : true
@@ -32,8 +37,8 @@ var extensions = [new openid.UserInterface(),
                         "max_auth_age": 24 * 60 * 60, // one day
                         "preferred_auth_policies" : "none" //no auth method preferred.
                       })];
-
-var relyingParty = new openid.RelyingParty('https://demo-project-c9-cytr.c9.io/verify', // Verification URL (yours)
+                      
+var relyingParty = new openid.RelyingParty('http://mongo-cli.herokuapp.com/verify', // Verification URL (yours)
   null, // Realm (optional, specifies realm for OpenID authentication)
   false, // Use stateless verification
   false, // Strict mode
@@ -53,10 +58,6 @@ mongoClient.connect('mongodb://cyril:cccc1111@ds053978.mongolab.com:53978/jfx', 
 });
 
 var conns = { _: [] };
-
-var server = http.createServer(handler);
-
-server.listen(process.env.PORT || 5000, process.env.IP || "127.0.0.1");
 
 var wss = new WebSocketServer({
   server: server,
@@ -123,7 +124,7 @@ wss.on('connection', function(ws) {
         if ('_id' in r.args[0])
           r.args[0]._id = new ObjectID(r.args[0]._id);
         r.args.push(function(err, obj) {
-          if (r.fn == 'find') { //obj.toArray) {
+          if (r.fn == 'find') { //obj.toArray) { 
             obj.toArray(function(err, data) {
               send({ _i: r._i, msg: data });
             })
@@ -139,7 +140,7 @@ wss.on('connection', function(ws) {
       }
       else if (r.fn=='auth'){
         send({ _i: r._i, msg: email });
-
+        
       }else{//echo
         send(r);
       }
@@ -165,73 +166,50 @@ wss.on('connection', function(ws) {
   });
 });
 
+console.log('static serve: ', __dirname + '/html');
+app.use(express.static(__dirname + '/html'));
 
-function handler(req, res) {
+app.get('/authenticate', function(request, response) {
+    var identifier = request.query.openid_identifier;
 
-  if (req.method == 'POST') {
-    //var query = querystring.parse(parsedUrl.query);
-    var body = "";
-    req.on('data', function(chunk) {
-      body += chunk;
+    // Resolve identifier, associate, and build authentication URL
+    relyingParty.authenticate(identifier, false, function(error, authUrl)         {
+            if (error) {
+                    response.writeHead(200);
+                    response.end('Authentication failed: ' + error.message);
+            }
+            else if (!authUrl) {
+                    response.writeHead(200);
+                    response.end('Authentication failed');
+            }
+            else {
+                    response.writeHead(302, { Location: authUrl });
+                    response.end();
+            }
     });
-    req.on('end', function() {
-      console.log('POSTed: ' + body);
+});
 
-      res.writeHead(200);
-      var data = JSON.parse(body);
-
-      res.write(JSON.stringify(data));
-      res.end();
+app.get('/verify', function(request, res) {
+    // Verify identity assertion
+    // NOTE: Passing just the URL is also possible
+    relyingParty.verifyAssertion(request, function(error, result) {
+            res.writeHead(200);
+            if (!error && result.authenticated){
+              var token = Math.ceil(1e16*Math.random()).toString(16);
+              emails[result.email] = token;
+              tokens[token] = result.email;
+              result.token = token;
+              console.log(result);
+                  res.end( 
+                  '<script>var r = '+JSON.stringify(result)+';function receiveMessage(event){'+
+                      'event.source.postMessage(JSON.stringify(r), event.origin);window.close();}'+
+                    'window.addEventListener("message", receiveMessage, false);</script>' );
+            }else
+              res.end('Failure :('); // TODO: show some error message!
     });
+});
 
-  }
-  else if (req.method == 'GET') {
-    var parsedUrl = url.parse(req.url);
-    if (parsedUrl.pathname == '/authenticate') {
-      // User supplied identifier
-      var query = querystring.parse(parsedUrl.query);
-      var identifier = query.openid_identifier;
 
-      // Resolve identifier, associate, and build authentication URL
-      relyingParty.authenticate(identifier, false, function(error, authUrl) {
-        if (error) {
-          res.writeHead(200);
-          res.end('Authentication failed: ' + error.message);
-        }
-        else if (!authUrl) {
-          res.writeHead(200);
-          res.end('Authentication failed');
-        }
-        else {
-          res.writeHead(302, {Location: authUrl });
-          res.end();
-        }
-      });
-    }
-    else if (parsedUrl.pathname == '/verify') {
-      // Verify identity assertion
-      // NOTE: Passing just the URL is also possible
-      relyingParty.verifyAssertion(req, function(error, result) {
-        res.writeHead(200);
-        if (!error && result.authenticated){
-          var token = Math.ceil(1e16*Math.random()).toString(16);
-          emails[result.email] = token;
-          tokens[token] = result.email;
-          result.token = token;
-          console.log(result);
-          res.end(
-            '<script>var r = '+JSON.stringify(result)+';function receiveMessage(event){'+
-                'event.source.postMessage(JSON.stringify(r), event.origin);window.close();}'+
-              'window.addEventListener("message", receiveMessage, false);</script>' );
-        }else
-          res.end('Failure :(, try again' );
-      });
-    }
-  }
-  else {
-    console.log('_____ other req ', req);
-  }
-}
 
 var accessControl = {
   find: function(args, email) {
