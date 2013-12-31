@@ -121,8 +121,8 @@ wss.on('connection', function(ws) {
 
       if (r.fn in accessControl) {
         accessControl[r.fn](r.args, email);
-        if ('_id' in r.args[0])
-          r.args[0]._id = new ObjectID(r.args[0]._id);
+        /*if ('_id' in r.args[0])
+          r.args[0]._id = new ObjectID(r.args[0]._id);*/
         r.args.push(function(err, obj) {
           if (r.fn == 'find') { //obj.toArray) { 
             obj.toArray(function(err, data) {
@@ -166,9 +166,6 @@ wss.on('connection', function(ws) {
   });
 });
 
-console.log('static serve: ', __dirname + '/html');
-app.use(express.static(__dirname + '/html'));
-
 app.get('/authenticate', function(request, response) {
     var identifier = request.query.openid_identifier;
 
@@ -208,6 +205,9 @@ app.get('/verify', function(request, res) {
               res.end('Failure :('); // TODO: show some error message!
     });
 });
+
+console.log('static serve: ', __dirname + '/html');
+app.use('/', express.static('app' ));
 
 
 

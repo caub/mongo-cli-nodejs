@@ -25,7 +25,7 @@ send({fn:'find', args:[{a:4}]}, function(d){console.log(d)}) //returns it if you
     <button id="logout"  >Logout</button>
 </div>
 
-<script src="jquery-latest.js"></script>
+<script src="//code.jquery.com/jquery-latest.js"></script>
 <script>
 
 var coll = 'foo';
@@ -57,7 +57,7 @@ ws.onmessage = function(e) {
   }
 };
 ws.onclose   = function()  { console.log('[*] close');};
-setInterval(function(){ send({fn:'ping'}) }, 60000 );
+setInterval(function(){ send({fn:'ping'}, function(d){console.debug(d)}) }, 10000 );
 
 function send(o, cb){
   if (cb){
