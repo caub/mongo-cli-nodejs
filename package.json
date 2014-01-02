@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/cytr/MongoWebConsole-nodejs.git"
+    "url": "https://github.com/cytr/mongo-cli-nodejs.git"
   },
   "keywords": [
     "mongodb",
@@ -17,7 +17,7 @@
   "author": "cyril auburtin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/cytr/MongoWebConsole-nodejs/issues"
+    "url": "https://github.com/cytr/mongo-cli-nodejs/issues"
   },
   "dependencies" : {
      "mongodb"   :  "1.3.*",

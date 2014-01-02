@@ -57,7 +57,7 @@ ws.onmessage = function(e) {
   }
 };
 ws.onclose   = function()  { console.log('[*] close');};
-setInterval(function(){ send({fn:'ping'}, function(d){console.debug(d)}) }, 10000 );
+setInterval(function(){ send({fn:'ping'}, function(d){console.debug(d)}) }, 20000 );
 
 function send(o, cb){
   if (cb){

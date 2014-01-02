@@ -65,7 +65,7 @@ var wss = new WebSocketServer({
 });
 wss.broadcast = function(d, fn, _i, ws) {
 
-  if (!d._id) { //it's an array of items
+  if (Array.isArray(d)) {
     d.forEach(function(c) {wss.broadcast(c, fn, _i, ws);});
   }
   else {
@@ -106,7 +106,7 @@ wss.on('connection', function(ws) {
 
   if (coll) {
     ws.on('message', function(message) {
-      console.log('received: %s', message);
+
       var r = JSON.parse(message);
       /*if(r.token){
          token = r.token;
@@ -120,16 +120,21 @@ wss.on('connection', function(ws) {
        }*/
 
       if (r.fn in accessControl) {
-        accessControl[r.fn](r.args, email);
-        /*if ('_id' in r.args[0])
-          r.args[0]._id = new ObjectID(r.args[0]._id);*/
+        try{
+           accessControl[r.fn](r.args, email);
+        } catch(e){
+          console.log(e);
+          send({ _i: r._i, msg: {error: e} });
+        }
+
+        //console.log('r ', r.args);
         r.args.push(function(err, obj) {
           if (r.fn == 'find') { //obj.toArray) { 
             obj.toArray(function(err, data) {
               send({ _i: r._i, msg: data });
             })
           }
-          else if (typeof obj == 'object'){ //worth broadcasting
+          else if (typeof obj == 'object' && obj!==null){ //worth broadcasting
             //send({_i:r._i, msg: obj});
             wss.broadcast(obj, r.fn, r._i, ws);
           }else{
@@ -211,18 +216,31 @@ app.use('/', express.static('app' ));
 
 
 
+function addAccess(o, prop, email){ //prop is _canRead|Upsert|Remove
+  if (email){
+    if (o.$or){//need to wrap it in an $and
+      o = {$and: [o, {$or: [{prop: null}, {prop: { $in: [email]}}]} ]};
+    }else{
+      o.$or = [{prop: null}, {prop: { $in: [email]}}]
+    }
+  }else{
+    o[prop] = null;
+  }
+}
+
 var accessControl = {
   find: function(args, email) {
-    if (email) {
-      args[0].$or = (args[0].$or || []).concat([{_canRead: null}, {_canRead: { $in: [email]}}]);
+    if (args[0].hasOwnProperty('$query')) {
+      addAccess( args[0].$query, '_canRead', email);
+
+    }else{
+      addAccess( args[0], '_canRead', email);
     }
-    else {
-      args[0]._canRead = null;
-    }
+
   },
   insert: function(args, email) {
     if (!email) {
-      if (!args.id) {//surely an array of items
+      if (Array.isArray(args)) {
         for (var i = 0; i < args.length; i++)
           removeSpecialFields(args[i]);
       }else {
@@ -231,23 +249,23 @@ var accessControl = {
     }
   },
   remove: function(args, email) {
-    if (email) {
-      args[0].$or = (args[0].$or || []).concat([{ _canRemove: null}, {_canRemove: { $in: [email]}}]);
-    }
-    else {
-      args[0]._canRemove = null;
-    }
+    if (args[0])
+      addAccess( args[0], '_canRemove', email);
   },
   update: function(args, email) {
-    if (email) {
-      args[0].$or = (args[0].$or || []).concat([{ _canUpsert: null }, {_canUpsert: {$in: [email]} }]);
-    }
-    else {
-      args[0]._canUpsert = null;
-      if (args.length > 1) {
+    if (args[0])
+      addAccess( args[0], '_canUpsert', email);
+
+    if (!email){
+      //update object is either the last or before last if options are given// (broken with findAndModify(q,sort,doc) .. todo
+      if (args.length ==2) {
         removeSpecialFields(args[1]);
+      }else if (args.length > 2) {
+        removeSpecialFields(args[args.length-2]);
       }
     }
+    /*if (args[0]._id)
+        args[0]._id = new ObjectID(args[0]._id);*/
   }
 };
 accessControl.findAndModify = accessControl.update;
@@ -256,12 +274,12 @@ accessControl.save = accessControl.insert;
 
 
 function removeSpecialFields(o) {
-  if ('$set' in o) {
+  if ( o.hasOwnProperty('$set')) {
     delete o.$set._canUpsert;
     delete o.$set._canRemove;
     delete o.$set._canRead;
   }
-  if ('$push' in o) {
+  if ( o.hasOwnProperty('$push')) {
     delete o.$push._canUpsert;
     delete o.$push._canRemove;
     delete o.$push._canRead;
