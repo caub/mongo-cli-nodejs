@@ -71,13 +71,16 @@ wss.broadcast = function(d, fn, _i, ws) {
   else {
     var reply = JSON.stringify({ fn: fn, msg: d});
     if (d._canRead) {
-      d._canRead.forEach(function(i) {
-        var wsi = conns[i];
-        if (wsi) {
-          if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
-          else wsi.send(reply);
-        }
-      });
+       if (d._canRead.length===0)
+          ws.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
+       else
+          d._canRead.forEach(function(i) {
+            var wsi = conns[i];
+            if (wsi) {
+              if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
+              else wsi.send(reply);
+            }
+          });
     }
     else {
       for (var i in this.clients) {
@@ -86,8 +89,6 @@ wss.broadcast = function(d, fn, _i, ws) {
       }
     }
   }
-
-
 };
 
 
@@ -100,8 +101,10 @@ wss.on('connection', function(ws) {
   var token = query.token;
   var email = tokens[token];
   var coll = query.coll ? db.collection(prefix + query.coll) : null;
+  var accessControl = accessControlAnonymous;
   if (email) {
     conns[email] = ws;
+    accessControl = accessControlAuthenticated;
   }
 
   if (coll) {
@@ -119,7 +122,7 @@ wss.on('connection', function(ws) {
          coll = db.collection(prefix+r.coll);
        }*/
 
-      if (r.fn in accessControl) {
+      if (accessControl.hasOwnProperty(r.fn)) {
         try{
            accessControl[r.fn](r.args, email);
         } catch(e){
@@ -127,7 +130,7 @@ wss.on('connection', function(ws) {
           send({ _i: r._i, msg: {error: e} });
         }
 
-        //console.log('r ', r.args);
+        console.log('r ', JSON.stringify(r.args));
         r.args.push(function(err, obj) {
           if (r.fn == 'find') { //obj.toArray) { 
             obj.toArray(function(err, data) {
@@ -211,34 +214,43 @@ app.get('/verify', function(request, res) {
     });
 });
 
-console.log('static serve: ', __dirname + '/html');
+console.log('static serve: ', __dirname + '/app');
 app.use('/', express.static('app' ));
+//app.use(express.static(__dirname + '/app'));
 
 
+var buildAccessAnonymous = {
+    read: function(email){  return [{_canRead:null},{_canRead:{$size:0}}] },
+    upsert: function(email){ return  [{_canUpsert:null},{_canUpsert:{$size:0}}] },
+    remove: function(email){ return [{_canRemove:null},{_canRemove:{$size:0}}] }
+};
+var buildAccessAuthenticated = {
+    read: function(email){return [{_canRead:null},{_canRead:{$size:0}},{_canRead: { $in: [email]}}]},
+    upsert: function(email){ return [{_canUpsert:null},{_canUpsert:{$size:0}},{_canUpsert: { $in: [email]}}]},
+    remove: function(email){ return [{_canRemove:null},{_canRemove:{$size:0}},{_canRemove: { $in: [email]}}] }
+};
 
-function addAccess(o, prop, email){ //prop is _canRead|Upsert|Remove
-  if (email){
-    if (o.$or){//need to wrap it in an $and
-      o = {$and: [o, {$or: [{prop: null}, {prop: { $in: [email]}}]} ]};
-    }else{
-      o.$or = [{prop: null}, {prop: { $in: [email]}}]
-    }
-  }else{
-    o[prop] = null;
-  }
-}
+var accessControlAnonymous = new AccessControl(buildAccessAnonymous);
+var accessControlAuthenticated = new AccessControl(buildAccessAuthenticated);
 
-var accessControl = {
-  find: function(args, email) {
+function AccessControl(buildAccess) {
+
+  this.find= function(args, email) {
     if (args[0].hasOwnProperty('$query')) {
-      addAccess( args[0].$query, '_canRead', email);
-
+       if (args[0].$query.$or){
+         args[0].$query = {$and: [args[0].$query, {$or: buildAccess.read(email) } ]};
+       }else{
+         args[0].$query.$or = buildAccess.read(email);
+       }
     }else{
-      addAccess( args[0], '_canRead', email);
+      if (args[0].$or){
+        args[0] = {$and: [args[0], {$or: buildAccess.read(email) } ]};
+      }else{
+        args[0].$or = buildAccess.read(email);
+      }
     }
-
-  },
-  insert: function(args, email) {
+  };
+  this.insert= function(args, email) {
     if (!email) {
       if (Array.isArray(args)) {
         for (var i = 0; i < args.length; i++)
@@ -247,14 +259,20 @@ var accessControl = {
         removeSpecialFields(args);
       }
     }
-  },
-  remove: function(args, email) {
-    if (args[0])
-      addAccess( args[0], '_canRemove', email);
-  },
-  update: function(args, email) {
-    if (args[0])
-      addAccess( args[0], '_canUpsert', email);
+  };
+  this.remove= function(args, email) {
+    if (args[0].$or){
+      args[0] = {$and: [args[0], {$or: buildAccess.remove(email) } ]};
+    }else{
+      args[0].$or = buildAccess.remove(email);
+    }
+  };
+  this.update= function(args, email) {
+    if (args[0].$or){
+      args[0] = {$and: [args[0], {$or: buildAccess.upsert(email) } ]};
+    }else{
+      args[0].$or = buildAccess.upsert(email);
+    }
 
     if (!email){
       //update object is either the last or before last if options are given// (broken with findAndModify(q,sort,doc) .. todo
@@ -266,11 +284,12 @@ var accessControl = {
     }
     /*if (args[0]._id)
         args[0]._id = new ObjectID(args[0]._id);*/
-  }
+  };
+
+  this.findAndModify= this.update;
+  this.findAndRemove= this.remove;
+  this.save = this.insert;
 };
-accessControl.findAndModify = accessControl.update;
-accessControl.findAndRemove = accessControl.remove;
-accessControl.save = accessControl.insert;
 
 
 function removeSpecialFields(o) {
