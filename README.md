@@ -20,6 +20,11 @@ example in javascript:
     send({fn:'insert', args:[{a:4, _canRemove:['john@gmail.com']}]}, function(d){console.log(d)})
     send({fn:'insert', args:[{a:5,_canRead:['john@gmail.com'],_canUpsert:['john@gmail.com'],_canRemove:['john@gmail.com']}]}, function(d){console.log(d)})
 
+    //notifications:
+      connected clients receive the update when their rights matches
+      note: not all methods will trigger notifications, insert, save, findAndModify, findAndRemove do
+           update, remove won't since it just return the number of updates.
+
 demo:
  - [heroku](http://mongo-cli.herokuapp.com/)
  - or from [cloud9](https://c9.io/), fork this project, open it and click run over server.js
