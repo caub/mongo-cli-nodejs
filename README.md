@@ -7,9 +7,22 @@ MongoDB from a websocket, with extra features:
 
 The syntax is following nodejs-mongodb driver API: http://mongodb.github.io/node-mongodb-native/api-generated/collection.html
 
-example in javascript: `send({fn:'find', args:[{name: 'cyril'}]}, function(d){console.log(d)})`
+example in javascript:
 
-demo: http://mongo-cli.herokuapp.com/
+    send({fn:'find', args:[{a: 2}]}, function(d){console.log(d)})
+    send({fn:'insert', args:[{a:3}]}, function(d){console.log(d)})
+    send({fn:'find', args:[{a: {$gt:2}}]}, function(d){console.log(d)})
+    send({fn:'findAndModify', args:[{a:3},null,{$set:{a:5,b:12}},{new:true}]}, function(d){console.log(d)})
+    send({fn:'findAndModify', args:[{a:6},null,{a:5,b:12},{new:true,upsert:true}]}, function(d){console.log(d)})
+    send({fn:'remove', args:[{a: {$exists: true}}]}, function(d){console.log(d)})
+
+    //when you're authentified, access-rights are enabled
+    send({fn:'insert', args:[{a:4, _canRemove:['john@gmail.com']}]}, function(d){console.log(d)})
+    send({fn:'insert', args:[{a:5,_canRead:['john@gmail.com'],_canUpsert:['john@gmail.com'],_canRemove:['john@gmail.com']}]}, function(d){console.log(d)})
+
+demo:
+ - [heroku](http://mongo-cli.herokuapp.com/)
+ - or from [cloud9](https://c9.io/), fork this project, open it and click run over server.js
 
 some more:
  - [Calendar](http://jsbin.com/UmUbipa/15)
