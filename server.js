@@ -77,11 +77,13 @@ wss.broadcast = function(d, coll, fn, _i, ws) {
           ws.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
        else
           d._canRead.forEach(function(i) {
-            var wsi = connsAuth[coll][i];
-            if (wsi) {
-              if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
-              else wsi.send(reply);
-            }
+            var wsis = connsAuth[coll][i];
+            if (wsis && wsis.length)
+                wsis.forEach(function(wsi) {
+                    if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
+                    else wsi.send(reply);
+                });
+
           });
     }
     else {
@@ -110,7 +112,10 @@ wss.on('connection', function(ws) {
   if (email) {
     if(connsAuth[coll.collectionName] === undefined)
         connsAuth[coll.collectionName] = {};
-    connsAuth[coll.collectionName][email] = ws;
+    if (connsAuth[coll.collectionName][email]=== undefined)
+        connsAuth[coll.collectionName][email] = [ws];
+    else
+        connsAuth[coll.collectionName][email].push(ws);
     accessControl = accessControlAuthenticated;
   }
 
@@ -177,7 +182,13 @@ wss.on('connection', function(ws) {
     //.log('b4 ', conns._.length);
     conns[coll.collectionName].splice(conns[coll.collectionName].indexOf(ws), 1);
     //  console.log('a4 ', conns._.length);
-    if (email) delete connsAuth[coll.collectionName][email];
+    if (email){
+        var wsis = connsAuth[coll.collectionName][email];
+        var idx = wsis.indexOf(ws);
+        if (idx>=0)
+            wsis.splice(idx, 1);
+         //if length=0 might remove the array as well
+    }
   });
 });
 
