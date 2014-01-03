@@ -5,7 +5,7 @@ MongoDB from a websocket, with extra features:
  - **Access-rights** on documents
  - **Notifications**
 
-The syntax is following nodejs [mongodb driver API](http://mongodb.github.io/node-mongodb-native/api-generated/collection.html)  
+The syntax is following nodejs [mongodb driver API](http://mongodb.github.io/node-mongodb-native/api-generated/collection.html)
 Example in javascript:
 
     send({fn:'find', args:[{a: 2}]}, function(d){console.log(d)})
@@ -29,5 +29,6 @@ Demo server:
  - or from [cloud9](https://c9.io/), fork this project, open it and click run over server.js
 
 Some apps using it:
- - [Calendar](http://jsbin.com/UmUbipa/15)
- - [Task list](http://jsbin.com/EduGeZE/21)
+ - [Calendar](http://jsbin.com/UmUbipa/latest)
+ - [Task list](http://jsbin.com/EduGeZE/latest)
+ - [Collaborative painting](http://jsbin.com/afiMEWa/latest)

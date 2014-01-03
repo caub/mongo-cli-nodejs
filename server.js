@@ -38,7 +38,7 @@ var extensions = [new openid.UserInterface(),
                         "preferred_auth_policies" : "none" //no auth method preferred.
                       })];
                       
-var relyingParty = new openid.RelyingParty('http://mongo-cli.herokuapp.com/verify', // Verification URL (yours)
+var relyingParty = new openid.RelyingParty('http://mongo-cli-nodejs.herokuapp.com/verify', // Verification URL (yours)
   null, // Realm (optional, specifies realm for OpenID authentication)
   false, // Use stateless verification
   false, // Strict mode
