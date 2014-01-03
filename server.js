@@ -57,16 +57,18 @@ mongoClient.connect('mongodb://cyril:cccc1111@ds053978.mongolab.com:53978/jfx', 
   db = _db;
 });
 
-var conns = { _: [] };
+//clients grouped by the collection they subscribe to
+var conns = {};
+var connsAuth = {};
 
 var wss = new WebSocketServer({
   server: server,
   path: '/api'
 });
-wss.broadcast = function(d, fn, _i, ws) {
-
+wss.broadcast = function(d, coll, fn, _i, ws) {
+    //  this.clients not used
   if (Array.isArray(d)) {
-    d.forEach(function(c) {wss.broadcast(c, fn, _i, ws);});
+    d.forEach(function(c) {wss.broadcast(c, coll, fn, _i, ws);});
   }
   else {
     var reply = JSON.stringify({ fn: fn, msg: d});
@@ -75,7 +77,7 @@ wss.broadcast = function(d, fn, _i, ws) {
           ws.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
        else
           d._canRead.forEach(function(i) {
-            var wsi = conns[i];
+            var wsi = connsAuth[coll][i];
             if (wsi) {
               if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
               else wsi.send(reply);
@@ -83,10 +85,10 @@ wss.broadcast = function(d, fn, _i, ws) {
           });
     }
     else {
-      for (var i in this.clients) {
-        if (ws === this.clients[i]) this.clients[i].send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
-        else this.clients[i].send(reply);
-      }
+      conns[coll].forEach(function(wsi) {
+        if (ws === wsi) ws.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
+        else wsi.send(reply);
+      });
     }
   }
 };
@@ -96,14 +98,19 @@ wss.on('connection', function(ws) {
 
   console.log(ws.upgradeReq.url);
   var query = querystring.parse(url.parse(ws.upgradeReq.url).query);
-  conns._.push(ws);
+
   console.log(query.token, query.coll);
   var token = query.token;
   var email = tokens[token];
   var coll = query.coll ? db.collection(prefix + query.coll) : null;
+  if(conns[coll.collectionName] === undefined)
+    conns[coll.collectionName] = [];
+  conns[coll.collectionName].push(ws);
   var accessControl = accessControlAnonymous;
   if (email) {
-    conns[email] = ws;
+    if(connsAuth[coll.collectionName] === undefined)
+        connsAuth[coll.collectionName] = {};
+    connsAuth[coll.collectionName][email] = ws;
     accessControl = accessControlAuthenticated;
   }
 
@@ -139,7 +146,7 @@ wss.on('connection', function(ws) {
           }
           else if (typeof obj == 'object' && obj!==null){ //worth broadcasting
             //send({_i:r._i, msg: obj});
-            wss.broadcast(obj, r.fn, r._i, ws);
+            wss.broadcast(obj, coll.collectionName, r.fn, r._i, ws);
           }else{
             send({ _i: r._i, msg: obj });
           }
@@ -168,9 +175,9 @@ wss.on('connection', function(ws) {
 
   ws.on('close', function() {
     //.log('b4 ', conns._.length);
-    conns._.splice(conns._.indexOf(ws), 1);
+    conns[coll.collectionName].splice(conns[coll.collectionName].indexOf(ws), 1);
     //  console.log('a4 ', conns._.length);
-    if (email) delete conns.email;
+    if (email) delete connsAuth[coll.collectionName][email];
   });
 });
 
