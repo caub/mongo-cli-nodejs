@@ -72,19 +72,15 @@ wss.broadcast = function(d, coll, fn, _i, ws) {
   }
   else {
     var reply = JSON.stringify({ fn: fn, msg: d});
-    if (d._canRead) {
-       if (d._canRead.length===0)
-          ws.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
-       else
-          d._canRead.forEach(function(i) {
-            var wsis = connsAuth[coll][i];
-            if (wsis && wsis.length)
-                wsis.forEach(function(wsi) {
-                    if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
-                    else wsi.send(reply);
-                });
-
-          });
+    if (d._canRead && d._canRead.length!==0) {
+      d._canRead.forEach(function(i) {
+        var wsis = connsAuth[coll][i];
+        if (wsis && wsis.length)
+            wsis.forEach(function(wsi) {
+                if (wsi === ws) wsi.send(JSON.stringify({ _i: _i,fn: fn, msg: d}));
+                else wsi.send(reply);
+            });
+      });
     }
     else {
       conns[coll].forEach(function(wsi) {
