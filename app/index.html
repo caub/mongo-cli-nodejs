@@ -1,9 +1,9 @@
-<a href="https://github.com/cytr/mongo-cli-nodejs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
+<a href="https://github.com/n11/mongo-cli-nodejs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
 
-<h1>Mongo-cli</h1>
-Commands (try them in your dev-console) are following <a href="http://mongodb.github.io/node-mongodb-native/api-generated/collection.html">nodejs Mongo API</a>
+<h1 style="font-size: 3em;">Mongo-cli</h1>
+The API is following <a href="http://mongodb.github.io/node-mongodb-native/api-generated/collection.html">nodejs Mongo API</a>, try it in your browser console:
 <pre>
-send({fn:'insert', args:[{a:3}]}, function(d){console.log(d)}) //is broadcasted
+send({fn:'insert', args:[{a:3}]}, function(d){console.log(d)}) //is broadcasted to all clients
 send({fn:'find', args:[{}]}, function(d){console.log(d)})
 send({fn:'find', args:[{a:{$gt:1.9, $lt:2.1}}]}, function(d){console.log(d)})
 send({fn:'findAndModify', args:[{_id:"52bc3f20f170250000983688"},null,{$set:{a:5,b:12}},{new:true}]}, function(d){console.log(d)}) //is broadcasted
@@ -14,8 +14,9 @@ send({fn:'findAndModify', args:[{_id:"52bc3f20f170250000983688"},null,{$set:{a:5
     <span id=logged style="display:none"><span id=emailSpan></span> <button id=logout>Sign out</button></span>
 </p>
 <pre>
-send({fn:'insert', args:[{a:4,_canRead:['cyril.auburtin@gmail.com']}]}, function(d){console.log(d)})
-send({fn:'find', args:[{a:4}]}, function(d){console.log(d)}) //returns it if you're this user ^, try with your email
+send({fn:'insert', args:[{a:4,_canRead:['cyril.auburtin@gmail.com']}]}, function(d){console.log(d)}) //multicasted to _canRead group
+send({fn:'find', args:[{a:4}]}, function(d){console.log(d)}) //returns that document, if you were this user
+send({fn:'remove', args:[{a:4}]}, function(d){console.log(d)})
 </pre>
 
 
@@ -34,8 +35,9 @@ ws.onopen    = function()  {
     send({fn:'auth'}, function(_email){
       email = _email;
       if (email){
-        $('#authed').show().find('#email').text(email);
-        $('#openid').hide();
+        emailSpan.innerHTML = email;
+        unlogged.style.display='none';
+        logged.style.display='';
       }
     });
   }
@@ -46,11 +48,12 @@ ws.onmessage = function(e) {
     cbs[r._i](r.msg);
     cbs[r._i]=undefined;
   }else{
-    console.log('[.] message', e.data);
+    console.log(r);
   }
 };
-ws.onclose   = function()  { console.log('[*] close');};
-setInterval(function(){ send({fn:'ping'}, function(d){console.debug(d)}) }, 20000 );
+ws.onclose   = function()  { console.log('[*] close', pings);};
+var pings=0;
+setInterval(function(){ send({fn:'ping'}, function(d){ pings++;}) }, 20000 );
 
 function send(o, cb){
   if (cb){
