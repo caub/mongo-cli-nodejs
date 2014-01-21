@@ -1,31 +1,24 @@
+<a href="https://github.com/cytr/mongo-cli-nodejs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
 
-
-<h1>Mongo console</h1>
-<a href="http://mongodb.github.io/node-mongodb-native/api-generated/collection.html">using nodejs-API</a>
+<h1>Mongo-cli</h1>
+Commands (try them in your dev-console) are following <a href="http://mongodb.github.io/node-mongodb-native/api-generated/collection.html">nodejs Mongo API</a>
 <pre>
-send({fn:'insert', args:[{a:3}]}, function(d){console.log(d)})
+send({fn:'insert', args:[{a:3}]}, function(d){console.log(d)}) //is broadcasted
 send({fn:'find', args:[{}]}, function(d){console.log(d)})
 send({fn:'find', args:[{a:{$gt:1.9, $lt:2.1}}]}, function(d){console.log(d)})
-send({fn:'findAndModify', args:[{_id:"52bc3f20f170250000983688"},null,{$set:{a:5,b:12}},{new:true}]}, function(d){console.log(d)})
+send({fn:'findAndModify', args:[{_id:"52bc3f20f170250000983688"},null,{$set:{a:5,b:12}},{new:true}]}, function(d){console.log(d)}) //is broadcasted
 </pre>
 
-<p>For having the ability to put _canRead, _canUpsert and _canRemove fields in inserted documents, sign in using OpenID</p>
+<p>
+    <span id=unlogged>_canRead, _canUpsert and _canRemove are special fields only allowed if you're authenticated with an <button id=login>OpenID</button> <input id=openId value="https://www.google.com/accounts/o8/id" style="width:240px"></span>
+    <span id=logged style="display:none"><span id=emailSpan></span> <button id=logout>Sign out</button></span>
+</p>
 <pre>
 send({fn:'insert', args:[{a:4,_canRead:['cyril.auburtin@gmail.com']}]}, function(d){console.log(d)})
 send({fn:'find', args:[{a:4}]}, function(d){console.log(d)}) //returns it if you're this user ^, try with your email
 </pre>
 
 
-<div id=openid>
-    <button  data-url='https://www.google.com/accounts/o8/id'>Google</button>
-    <button data-url='http://open.login.yahooapis.com/openid20/www.yahoo.com/xrds'>Yahoo</button>
-</div>
-<div id="authed" style="display:none">
-    <h3>Hello <b id=email></b></h3>
-    <button id="logout"  >Logout</button>
-</div>
-
-<script src="//code.jquery.com/jquery-latest.js"></script>
 <script>
 
 var coll = 'foo';
@@ -75,26 +68,24 @@ function firstCbsI(){
   return i;
 }
 
-$(function(){
 
-  $('#logout').click(function(){
+logout.onclick = function(){
     document.cookie='wsc9=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
     email="";
     token="";
-    $('#authed').hide();
-    $('#openid').show();
+    emailSpan.innerHTML = email;
+    unlogged.style.display='';
+    logged.style.display='none';
+};
 
-  })
 
-
-  $('#openid button').click(function(){
-      var popup = window.open( host+'/authenticate?openid_identifier='+encodeURIComponent($(this).data('url')), 'openid_popup', 'width=790,height=580');
-      setInterval(function(){
-          popup.postMessage("ping", host);
-      }, 500);
-  })
-
-})
+login.onclick =function(){
+    var url = openId.value;
+    var popup = window.open( host+'/authenticate?openid_identifier='+url, 'openid_popup', 'width=790,height=580');
+    setInterval(function(){
+        popup.postMessage("ping", host);
+    }, 500);
+};
 
 function receiveOpenIdMessage(event){
   console.log(event.data);
@@ -102,8 +93,9 @@ function receiveOpenIdMessage(event){
     var r = JSON.parse(event.data);
     token = r.token;
     email = r.email;
-    $('#authed').show().find('#email').text(email);
-    $('#openid').hide();
+    emailSpan.innerHTML = email;
+    unlogged.style.display='none';
+    logged.style.display='';
     document.cookie='wsc9='+token+'; expires='+new Date(Date.now()+1000*3600*24).toUTCString()+'; path=/';
   }
 }
