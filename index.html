@@ -1,0 +1,109 @@
+<a href="https://github.com/n11/mongo-cli-nodejs"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_green_007200.png" alt="Fork me on GitHub"></a>
+
+<h1 style="font-size: 3em;">Mongo-cli</h1>
+The API is following <a href="http://mongodb.github.io/node-mongodb-native/api-generated/collection.html">nodejs Mongo API</a>, try it in your browser console:
+<pre>
+send({fn:'insert', args:[{a:3}]}, function(d){console.log(d)}) //response broadcasted to all clients connected to this collection
+send({fn:'find', args:[{}]}, function(d){console.log(d)}) // return matching documents (for which _canRead list is empty or null, "public documents")
+send({fn:'find', args:[{a:{$gt:1.9, $lt:2.1}}]}, function(d){console.log(d)})
+send({fn:'findAndModify', args:[{_id:"52bc3f20f170250000983688"},null,{$set:{a:5,b:12}},{new:true}]}, function(d){console.log(d)}) //response broadcasted
+</pre>
+
+<p>
+    <span id=unlogged>_canRead, _canUpsert and _canRemove are special fields only allowed if you're authenticated with an <button id=login>OpenID</button> <input id=openId value="https://www.google.com/accounts/o8/id" style="width:240px"></span>
+    <span id=logged style="display:none"><span id=emailSpan></span> <button id=logout>Sign out</button></span>
+</p>
+<pre>
+send({fn:'insert', args:[{a:4, _canRead:['test.mongocli@gmail.com','j.doe@gmail.com']}]}, function(d){console.log(d)}) //response multicasted to _canRead group or all if empty
+send({fn:'find', args:[{a:4}]}, function(d){console.log(d)}) //returns matching documents for which _canRead list is empty, null or containing your identity
+send({fn:'remove', args:[{a:4}]}, function(d){console.log(d)}) //removes matching documents for which _canRemove list is null, empty or containing your identity
+</pre>
+
+
+<script>
+
+var coll = 'foo';
+var token = document.cookie.replace(/(?:(?:^|.*;\s*)wsc9\s*\=\s*([^;]*).*$)|^.*$/, "$1"), email;
+
+//var host = 'https://mongo-cli-nodejs-c9-cytr.c9.io';
+var host = 'http://mongo-cli-nodejs.herokuapp.com';
+
+var ws = new WebSocket(host.replace('http','ws')+'/api?token='+token+'&coll='+coll);
+ws.onopen    = function()  {
+  console.log('[*] open');
+  if (token){
+    send({fn:'auth'}, function(_email){
+      email = _email;
+      if (email){
+        emailSpan.innerHTML = email;
+        unlogged.style.display='none';
+        logged.style.display='';
+      }
+    });
+  }
+};
+ws.onmessage = function(e) {
+  var r=JSON.parse(e.data);
+  if (cbs[r._i]){
+    cbs[r._i](r.msg);
+    cbs[r._i]=undefined;
+  }else{
+    console.log(r);
+  }
+};
+ws.onclose   = function()  { console.log('[*] close', pings);};
+var pings=0;
+setInterval(function(){ send({fn:'ping'}, function(d){ pings++;}) }, 20000 );
+
+function send(o, cb){
+  if (cb){
+    o._i = firstCbsI();
+    cbs[o._i] = cb;
+  }
+  ws.send(JSON.stringify(o));
+}
+var cbs=[];
+function firstCbsI(){
+  var i=0;
+  for (; i<cbs.length; i++)
+    if (!cbs[i])
+      return i;
+  return i;
+}
+
+
+logout.onclick = function(){
+    document.cookie='wsc9=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    email="";
+    token="";
+    emailSpan.innerHTML = email;
+    unlogged.style.display='';
+    logged.style.display='none';
+};
+
+
+login.onclick =function(){
+    var url = openId.value;
+    var popup = window.open( host+'/authenticate?openid_identifier='+url, 'openid_popup', 'width=790,height=580');
+    setInterval(function(){
+        popup.postMessage("ping", host);
+    }, 500);
+};
+
+function receiveOpenIdMessage(event){
+  console.log(event.data);
+  if (event.data){
+    var r = JSON.parse(event.data);
+    token = r.token;
+    email = r.email;
+    emailSpan.innerHTML = email;
+    unlogged.style.display='none';
+    logged.style.display='';
+    document.cookie='wsc9='+token+'; expires='+new Date(Date.now()+1000*3600*24).toUTCString()+'; path=/';
+  }
+}
+window.addEventListener("message", receiveOpenIdMessage, false);
+
+
+
+</script>
