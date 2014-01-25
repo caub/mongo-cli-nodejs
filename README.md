@@ -33,3 +33,6 @@ Some demo apps using it:
  - [Task list](http://jsbin.com/EduGeZE/latest)
  - [Calendar](http://jsbin.com/UmUbipa/latest)
  - [Collaborative painting](http://jsbin.com/afiMEWa/latest)
+
+
+![Mongo-cli schema](https://docs.google.com/drawings/d/1YEbvKHo1urJdJAvtwoEUc8vt3bBeEmspr7b_oJtahQU/pub?w=956&h=555 "Mongo-cli schema")
