@@ -233,34 +233,34 @@ app.use('/', express.static('app' ));
 //app.use(express.static(__dirname + '/app'));
 
 
-var buildAccessAnonymous = {
+var accessAnonymous = {
     read: function(email){  return [{_canRead:null},{_canRead:{$size:0}}] },
     upsert: function(email){ return  [{_canUpsert:null},{_canUpsert:{$size:0}}] },
     remove: function(email){ return [{_canRemove:null},{_canRemove:{$size:0}}] }
 };
-var buildAccessAuthenticated = {
+var accessAuthenticated = {
     read: function(email){return [{_canRead:null},{_canRead:{$size:0}},{_canRead: { $in: [email]}}]},
     upsert: function(email){ return [{_canUpsert:null},{_canUpsert:{$size:0}},{_canUpsert: { $in: [email]}}]},
     remove: function(email){ return [{_canRemove:null},{_canRemove:{$size:0}},{_canRemove: { $in: [email]}}] }
 };
 
-var accessControlAnonymous = new AccessControl(buildAccessAnonymous);
-var accessControlAuthenticated = new AccessControl(buildAccessAuthenticated);
+var accessControlAnonymous = new AccessControl(accessAnonymous);
+var accessControlAuthenticated = new AccessControl(accessAuthenticated);
 
-function AccessControl(buildAccess) {
+function AccessControl(access) {
 
   this.find= function(args, email) {
     if (args[0].hasOwnProperty('$query')) {
        if (args[0].$query.$or){
-         args[0].$query = {$and: [args[0].$query, {$or: buildAccess.read(email) } ]};
+         args[0].$query = {$and: [args[0].$query, {$or: access.read(email) } ]};
        }else{
-         args[0].$query.$or = buildAccess.read(email);
+         args[0].$query.$or = access.read(email);
        }
     }else{
       if (args[0].$or){
-        args[0] = {$and: [args[0], {$or: buildAccess.read(email) } ]};
+        args[0] = {$and: [args[0], {$or: access.read(email) } ]};
       }else{
-        args[0].$or = buildAccess.read(email);
+        args[0].$or = access.read(email);
       }
     }
   };
@@ -276,16 +276,16 @@ function AccessControl(buildAccess) {
   };
   this.remove= function(args, email) {
     if (args[0].$or){
-      args[0] = {$and: [args[0], {$or: buildAccess.remove(email) } ]};
+      args[0] = {$and: [args[0], {$or: access.remove(email) } ]};
     }else{
-      args[0].$or = buildAccess.remove(email);
+      args[0].$or = access.remove(email);
     }
   };
   this.update= function(args, email) {
     if (args[0].$or){
-      args[0] = {$and: [args[0], {$or: buildAccess.upsert(email) } ]};
+      args[0] = {$and: [args[0], {$or: access.upsert(email) } ]};
     }else{
-      args[0].$or = buildAccess.upsert(email);
+      args[0].$or = access.upsert(email);
     }
 
     if (!email){
