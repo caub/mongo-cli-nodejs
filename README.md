@@ -30,6 +30,7 @@ Demo server:
  - or from [cloud9](https://c9.io/cytr/mongo-cli-nodejs) (and run the file server.js)
 
 Some demo apps using it:
+ - [Chat](http://jsbin.com/facof/latest)
  - [Task list](http://jsbin.com/EduGeZE/latest)
  - [Calendar](http://jsbin.com/UmUbipa/latest)
  - [Collaborative painting](http://jsbin.com/afiMEWa/latest)
