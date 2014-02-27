@@ -25,7 +25,7 @@ send({fn:'remove', args:[{a:4}]}, function(d){console.log(d)}) //removes matchin
 var coll = 'foo';
 var token = document.cookie.replace(/(?:(?:^|.*;\s*)wsc9\s*\=\s*([^;]*).*$)|^.*$/, "$1"), email;
 
-//var host = 'https://mongo-cli-nodejs-c9-cytr.c9.io';
+//var host = 'https://mongocli12-c9-n11_.c9.io';
 var host = 'http://mongo-cli-nodejs.herokuapp.com';
 
 var ws = new WebSocket(host.replace('http','ws')+'/api?token='+token+'&coll='+coll);

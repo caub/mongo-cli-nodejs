@@ -5,7 +5,7 @@ MongoDB from a websocket, with extra features:
  - **Access-rights** on documents
  - **Notifications**
 
-The syntax is following nodejs [mongodb driver API](http://mongodb.github.io/node-mongodb-native/api-generated/collection.html)  
+It works by sending `{fn: someFunction, args: someArguments}` following the syntax of  [Mongo's nodejs driver](http://mongodb.github.io/node-mongodb-native/api-generated/collection.html)  
 Example in javascript:
 
     send({fn:'find', args:[{a: 2}]}, function(d){console.log(d)})
