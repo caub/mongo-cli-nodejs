@@ -54,7 +54,7 @@ var emails = {}; //email : token
 
 var db = null;
 
-mongoClient.connect('mongodb://cyril:cccc1111@ds053978.mongolab.com:53978/jfx', function (err, _db) {
+mongoClient.connect('mongodb://user:pass@ds053978.mongolab.com:53978/jfx', function (err, _db) {
   if (err) throw err;
   console.log("Connected to Database");
   db = _db;
